@@ -1,0 +1,129 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: abyss --default;
+}
+
+html[data-theme="abyss"] {
+  --rounded-box: 4px;
+  --rounded-btn: 4px;
+  --rounded-badge: 4px;
+  --rounded-input: 4px;
+}
+
+.app-shell {
+  @apply min-h-[100dvh] font-sans text-base-content bg-gradient-to-br from-base-300 via-base-200 to-base-300;
+}
+
+.screen {
+  @apply w-full h-[100dvh] flex flex-col overflow-hidden;
+}
+
+.screen--play {
+  @apply bg-base-100 overflow-hidden;
+}
+
+.screen--welcome {
+  @apply container mx-auto p-6 md:p-10 flex flex-col items-center justify-center text-center gap-8;
+}
+
+
+.welcome-header {
+    @apply text-center mb-12;
+}
+
+.welcome-title {
+    @apply text-5xl md:text-6xl font-black mb-3 text-primary tracking-tight;
+}
+
+.welcome-subtitle {
+    @apply text-lg md:text-xl text-base-content/70;
+}
+
+.model-picker-container {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl mb-12;
+}
+
+.card {
+    @apply bg-base-300 rounded shadow-xl p-6 flex flex-col items-center text-center transition-all duration-300 cursor-pointer border border-base-300 hover:border-primary;
+}
+
+.card--selected {
+    @apply ring-2 ring-primary border-primary shadow-lg;
+}
+
+.card-title {
+    @apply text-2xl font-bold mb-4;
+}
+
+.card-status {
+    @apply h-6 mb-4 text-sm font-mono;
+}
+
+.card-status--success {
+    @apply text-success;
+}
+
+.card-status--error {
+    @apply text-error;
+}
+
+.card-status--pending {
+    @apply text-warning;
+}
+
+.card-status--unset {
+    @apply text-base-content/50;
+}
+
+/* Chat area (fills available space and scrolls) */
+.chat-container {
+  @apply flex-1 p-6 overflow-hidden min-h-0;
+}
+.chat-window {
+  @apply h-full w-full max-w-4xl mx-auto rounded border border-base-300 bg-base-200 p-6 shadow-lg overflow-y-auto min-h-0;
+  background-color: hsl(var(--b2) / 0.85);
+}
+.chat-list {
+  @apply space-y-6;
+}
+
+/* Message appearance */
+.chat-message {
+  @apply max-w-full flex flex-col;
+}
+.chat-message__label {
+  @apply text-xs font-semibold opacity-70 mb-1 px-1;
+}
+.chat-bubble {
+  @apply rounded px-4 py-3 shadow-md max-w-[85%] md:max-w-[75%] break-words;
+}
+
+.chat-message--gm {
+    @apply items-start;
+}
+.chat-message--gm .chat-bubble {
+  @apply bg-base-200 text-base-content;
+}
+
+.chat-message--player {
+    @apply items-end;
+}
+.chat-message--player .chat-bubble {
+  @apply bg-primary text-primary-content;
+}
+.chat-message--player .chat-message__label {
+    @apply text-right;
+}
+
+/* Input bar pinned to bottom */
+.input-bar {
+  @apply sticky bottom-0 w-full bg-base-200 backdrop-blur p-3 border-t border-base-300;
+}
+
+.options-bar {
+  @apply w-full bg-base-200 backdrop-blur border-t border-base-300;
+}
+
+.options-bar__inner {
+  @apply max-w-4xl mx-auto p-3 flex flex-wrap gap-2;
+}

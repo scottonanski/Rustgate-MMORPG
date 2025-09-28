@@ -1,0 +1,5 @@
+{
+  "name": "AI MMORPG Scaffold",
+  "description": "A text-based MMORPG where the AI acts as Game Master. Featuring a modular engine, swappable LLM adapters (Ollama, OpenAI, Gemini), and a clean, minimalist UI.",
+  "requestFramePermissions": []
+}

@@ -14,6 +14,18 @@ A minimal, deterministic **TypeScript** scaffold for a text‑based MMORPG where
 
 ---
 
+## 🛠️ Prerequisites
+
+- **Node.js 18+** (or any version supported by Vite 5)
+- **[Ollama](https://ollama.com/)** running locally
+- Recommended model:
+  ```bash
+  ollama pull gemma3:1b
+  ```
+  `gemma3:1b` is small enough for modest GPUs/CPUs and matches the default adapter config.
+
+---
+
 ## 🚀 Quickstart
 
 ```bash
@@ -21,31 +33,25 @@ git clone <repo-url>
 cd ai-mmorpg-scaffold
 npm install
 cp .env.example .env
-# edit .env with your keys/urls
+# edit .env with any API keys / custom URLs
 npm run dev
 ```
-App opens at **http://localhost:5173**.
 
-> ⚠️ This prototype expects a local Ollama setup. Install **[Ollama](https://ollama.com/)** and pull the lightweight model before launching:
-> ```bash
-> ollama pull gemma3:1b
-> ```
-> The `gemma3:1b` variant runs comfortably on lower-end hardware and matches the default config.
+App opens at **http://localhost:5173**.
 
 ---
 
 ## 🔧 Environment Variables
 
+All variables live in `.env` (see `.env.example`). Only populate the ones you plan to use.
+
 | Key | Example | Required | Notes |
 | --- | --- | :--: | --- |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | ⭕ | Used by Local (Ollama) adapter; defaults to this value if omitted. |
-| `OPENAI_API_KEY` | `sk-…` | ⭕ | Needed only if you select OpenAI. |
-| `GOOGLE_API_KEY` | `…` | ⭕ | Needed only if you select Gemini. |
-| `DEFAULT_MODEL_OLLAMA` | `gemma3:1b` | ⭕ | Optional override for local model. |
-| `DEFAULT_MODEL_OPENAI` | `gpt-4o-mini` | ⭕ | Optional override. |
-| `DEFAULT_MODEL_GEMINI` | `gemini-1.5-flash` | ⭕ | Optional override. |
+| `VITE_OLLAMA_BASE_URL` | `http://localhost:11434` | ⭕ | Used by the dev proxy. Safe to leave as default when Ollama is local. |
+| `VITE_OPENAI_API_KEY` | `sk-...` | ⭕ | Needed only when using the OpenAI adapter. |
+| `VITE_GOOGLE_API_KEY` | `...` | ⭕ | Needed only when using the Gemini adapter. |
 
-> ⭕ = Optional. Provide at least one working adapter.
+> ⭕ = Optional. At least one adapter (and related env vars) must be healthy to play with live narration.
 
 ---
 
@@ -154,30 +160,29 @@ Responses are parsed; if the model returns junk, the engine falls back to generi
 ---
 
 ## 🧩 Adapters & Health Checks
-- **Ollama** uses `OLLAMA_BASE_URL` (default `http://localhost:11434`). Health: GET `/api/tags`.  
-- **OpenAI** uses `OPENAI_API_KEY`. Health: cheap models list call.  
-- **Gemini** uses `GOOGLE_API_KEY`. Health: minimal ping.  
+- **Ollama** uses `VITE_OLLAMA_BASE_URL` (defaults to `http://localhost:11434`). Health: GET `/api/tags`.  
+- **OpenAI** uses `VITE_OPENAI_API_KEY`. Health: cheap models list call.  
+- **Gemini** uses `VITE_GOOGLE_API_KEY`. Health: minimal ping.  
 - Welcome screen shows pass/fail. You can switch adapters any time.
 
 > 📴 If no adapter is healthy, a tiny **offline narration** stub keeps the Play screen usable.
 
 ---
 
-## 🎨 Styling (hard rule)
-All styling lives in **`/assets/styles.css`** using Tailwind + DaisyUI via `@apply`. JSX must only use semantic class names.
+## 🎨 Styling
+Custom layout and theme tweaks live in **`/assets/styles.css`** where we compose Tailwind primitives via `@apply`. In JSX we stick to semantic class names **plus** DaisyUI component classes (e.g. `btn`, `badge`) instead of long utility chains.
 
-**Example**
+**Custom style example**
 ```tsx
-// ✅ JSX
 <div className="chat-window">…</div>
 ```
 ```css
-/* ✅ CSS */
 .chat-window { @apply p-4 bg-base-200 rounded-lg overflow-y-auto; }
 ```
+
+**Inline component example**
 ```tsx
-// ❌ Utility chains in JSX (forbidden)
-<div className="p-4 bg-base-200 rounded-lg overflow-y-auto">…</div>
+<button className="btn btn-primary">Send</button>
 ```
 
 ---
