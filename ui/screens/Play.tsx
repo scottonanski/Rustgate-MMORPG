@@ -4,6 +4,7 @@ import { useUiStore } from '../state/uiStore.ts';
 import { Chat } from '../components/Chat.tsx';
 import { createEngine, GameEngine } from '../../engine/engine.ts';
 import type { EngineIO, Prompt } from '../../engine/types.ts';
+import { snapshot } from '../../adapters/pmm/bridge.ts';
 
 const OFFLINE_NARRATION = {
     narration: "The world feels strangely silent. Your chosen Game Master is offline. You can still explore, but the story will not advance.",
@@ -20,13 +21,37 @@ export const PlayScreen: React.FC = () => {
     const inputRef = useRef<HTMLInputElement>(null);
     const chatScrollRef = useRef<HTMLDivElement>(null);
     const startedAdapterRef = useRef<string | null>(null);
+    const [isAutoscroll, setIsAutoscroll] = useState(true);
+
+    const storeSnapshot = useCallback((target: GameEngine | null) => {
+        if (!target || typeof window === 'undefined') return;
+        try {
+            const data = snapshot(target);
+            window.localStorage.setItem('rg:snap', JSON.stringify(data));
+        } catch (error) {
+            console.error('Failed to store snapshot:', error);
+        }
+    }, []);
 
     useEffect(() => {
-        // Auto-scroll to bottom
-        if (chatScrollRef.current) {
-            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-        }
-    }, [messages, latestOptions]);
+        const node = chatScrollRef.current;
+        if (!node) return;
+
+        const handleScroll = () => {
+            const autoscroll = node.scrollTop >= node.scrollHeight - node.clientHeight - 200;
+            setIsAutoscroll(autoscroll);
+        };
+
+        handleScroll();
+        node.addEventListener('scroll', handleScroll, { passive: true });
+        return () => node.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+        const node = chatScrollRef.current;
+        if (!node || !isAutoscroll) return;
+        node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
+    }, [messages, latestOptions, isAutoscroll]);
 
     useEffect(() => {
         if (!selectedAdapterId) return;
@@ -60,10 +85,11 @@ export const PlayScreen: React.FC = () => {
             setLatestOptions(intro.options);
             setIsThinking(false);
             inputRef.current?.focus();
+            storeSnapshot(newEngine);
         };
 
         startNewGame();
-    }, [selectedAdapterId, adapters, addMessage]);
+    }, [selectedAdapterId, adapters, addMessage, storeSnapshot]);
 
     const handleSend = useCallback(async (command: string) => {
         if (!command.trim() || !engine || isThinking) return;
@@ -74,21 +100,39 @@ export const PlayScreen: React.FC = () => {
         setIsThinking(true);
 
         const result = await engine.runTurn({ command });
-        
+
         addMessage({ sender: 'gm', text: result.narration });
         setLatestOptions(result.options);
         setIsThinking(false);
         setTimeout(() => inputRef.current?.focus(), 0);
-    }, [engine, addMessage, isThinking]);
+        storeSnapshot(engine);
+    }, [engine, addMessage, isThinking, storeSnapshot]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         handleSend(inputValue);
     };
 
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key !== 'Enter') return;
+        if (event.shiftKey) {
+            event.preventDefault();
+            return;
+        }
+        event.preventDefault();
+        handleSend(inputValue);
+    };
+
     const handleChipClick = (option: string) => {
         setInputValue(option);
         inputRef.current?.focus();
+    };
+
+    const handleJumpToBottom = () => {
+        const node = chatScrollRef.current;
+        if (!node) return;
+        node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
+        setIsAutoscroll(true);
     };
 
     return (
@@ -99,29 +143,37 @@ export const PlayScreen: React.FC = () => {
             {latestOptions.length > 0 && !isThinking && (
               <div className="options-bar">
                 <div className="options-bar__inner">
-                  {latestOptions.map((opt, i) => (
-                    <button
-                      key={i}
-                      className="badge badge-lg badge-outline cursor-pointer hover:bg-primary/10 transition-colors"
-                      onClick={() => handleChipClick(opt)}
-                    >
-                      {opt}
-                    </button>
-                  ))}
+                  <div className="chips">
+                    {latestOptions.map((opt, i) => (
+                      <button
+                        key={i}
+                        className="chip-button"
+                        onClick={() => handleChipClick(opt)}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
+            {!isAutoscroll && (
+                <button type="button" className="jump-bottom" onClick={handleJumpToBottom}>
+                    Jump to latest
+                </button>
+            )}
             <form className="input-bar" onSubmit={handleSubmit}>
-                <div className="flex w-full max-w-4xl mx-auto gap-3 items-end">
+                <div className="input-row">
                     <input
                         ref={inputRef}
                         type="text"
-                        className="input input-bordered flex-1"
+                        className="input input-bordered input-field"
                         placeholder={isThinking ? "Game Master is thinking..." : "What do you do?"}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         disabled={isThinking}
                         aria-label="Enter your action"
+                        onKeyDown={handleKeyDown}
                     />
                     <button type="submit" className="btn btn-primary" disabled={isThinking || !inputValue.trim()}>
                         Send

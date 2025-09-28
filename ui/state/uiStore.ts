@@ -28,52 +28,91 @@ interface UiState {
   addMessage: (message: Omit<ChatMsg, 'id' | 'ts'>) => void;
 }
 
-export const useUiStore = create<UiState>((set, get) => ({
-  currentScreen: 'welcome',
-  playerName: 'Player',
-  adapters: [ollamaAdapter, openaiAdapter, geminiAdapter],
-  selectedAdapterId: null,
-  adapterStatuses: {
-    ollama: { status: 'unset', details: 'Not tested' },
-    openai: { status: 'unset', details: 'Not tested' },
-    gemini: { status: 'unset', details: 'Not tested' },
-  },
-  messages: [],
+const ADAPTER_STORAGE_KEY = 'rg:last-adapter';
+const STATUS_STORAGE_KEY = 'rg:adapter-statuses';
 
-  selectAdapter: (id) => set({ selectedAdapterId: id }),
+const defaultStatuses: Record<LlmAdapterId, { status: ConnectionStatus; details: string }> = {
+  ollama: { status: 'unset', details: 'Not tested' },
+  openai: { status: 'unset', details: 'Not tested' },
+  gemini: { status: 'unset', details: 'Not tested' },
+};
 
-  testAdapter: async (id) => {
-    const adapter = get().adapters.find(a => a.id === id);
-    if (!adapter) return;
+const loadStoredStatuses = () => {
+  if (typeof window === 'undefined') return defaultStatuses;
+  try {
+    const raw = window.localStorage.getItem(STATUS_STORAGE_KEY);
+    if (!raw) return defaultStatuses;
+    const parsed = JSON.parse(raw) as Record<LlmAdapterId, { status: ConnectionStatus; details: string }>;
+    return { ...defaultStatuses, ...parsed };
+  } catch {
+    return defaultStatuses;
+  }
+};
 
-    // When a user tests an adapter, also select it. This is more intuitive.
-    set(state => ({
-      selectedAdapterId: id,
-      adapterStatuses: { ...state.adapterStatuses, [id]: { status: 'pending', details: 'Testing...' } },
-    }));
+const loadStoredAdapter = (adapters: LlmAdapter[]): LlmAdapterId | null => {
+  if (typeof window === 'undefined') return null;
+  const stored = window.localStorage.getItem(ADAPTER_STORAGE_KEY) as LlmAdapterId | null;
+  if (stored && adapters.some(a => a.id === stored)) {
+    return stored;
+  }
+  return null;
+};
 
-    const result = await adapter.health();
-    
-    set(state => ({
-      adapterStatuses: {
-        ...state.adapterStatuses,
-        [id]: {
-          status: result.isHealthy ? 'success' : 'error',
-          details: result.details,
-        },
-      },
-    }));
-  },
+export const useUiStore = create<UiState>((set, get) => {
+  const adapters = [ollamaAdapter, openaiAdapter, geminiAdapter];
+  const initialStatuses = loadStoredStatuses();
+  const initialAdapter = loadStoredAdapter(adapters);
 
-  startGame: () => {
-    if (get().selectedAdapterId) {
-      set({ currentScreen: 'play', messages: [] });
-    }
-  },
+  return {
+    currentScreen: 'welcome',
+    playerName: 'Player',
+    adapters,
+    selectedAdapterId: initialAdapter,
+    adapterStatuses: initialStatuses,
+    messages: [],
 
-  addMessage: (message) => {
-    set(state => ({
-      messages: [...state.messages, { ...message, id: `${Date.now()}-${Math.random()}`, ts: new Date().toISOString() }],
-    }));
-  },
-}));
+    selectAdapter: (id) => set({ selectedAdapterId: id }),
+
+    testAdapter: async (id) => {
+      const adapter = get().adapters.find(a => a.id === id);
+      if (!adapter) return;
+
+      // When a user tests an adapter, also select it. This is more intuitive.
+      set(state => ({
+        selectedAdapterId: id,
+        adapterStatuses: { ...state.adapterStatuses, [id]: { status: 'pending', details: 'Testing...' } },
+      }));
+
+      const result = await adapter.health();
+
+      set(state => {
+        const updatedStatuses = {
+          ...state.adapterStatuses,
+          [id]: {
+            status: result.isHealthy ? 'success' : 'error',
+            details: result.details,
+          },
+        } as typeof state.adapterStatuses;
+
+        if (result.isHealthy && typeof window !== 'undefined') {
+          window.localStorage.setItem(ADAPTER_STORAGE_KEY, id);
+          window.localStorage.setItem(STATUS_STORAGE_KEY, JSON.stringify(updatedStatuses));
+        }
+
+        return { adapterStatuses: updatedStatuses };
+      });
+    },
+
+    startGame: () => {
+      if (get().selectedAdapterId) {
+        set({ currentScreen: 'play', messages: [] });
+      }
+    },
+
+    addMessage: (message) => {
+      set(state => ({
+        messages: [...state.messages, { ...message, id: `${Date.now()}-${Math.random()}`, ts: new Date().toISOString() }],
+      }));
+    },
+  };
+});

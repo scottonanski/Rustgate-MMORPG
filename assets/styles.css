@@ -95,7 +95,11 @@ html[data-theme="abyss"] {
   @apply text-xs font-semibold opacity-70 mb-1 px-1;
 }
 .chat-bubble {
-  @apply rounded px-4 py-3 shadow-md max-w-[85%] md:max-w-[75%] break-words;
+  @apply rounded-xl px-4 py-3 shadow max-w-[70ch] leading-relaxed break-words;
+}
+
+.chat-group {
+  @apply space-y-1;
 }
 
 .chat-message--gm {
@@ -112,12 +116,20 @@ html[data-theme="abyss"] {
   @apply bg-primary text-primary-content;
 }
 .chat-message--player .chat-message__label {
-    @apply text-right;
+  @apply text-right;
 }
 
 /* Input bar pinned to bottom */
 .input-bar {
-  @apply sticky bottom-0 w-full bg-base-200 backdrop-blur p-3 border-t border-base-300;
+  @apply sticky bottom-0 w-full bg-base-200/95 backdrop-blur p-3 flex gap-2 items-end pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-base-300;
+}
+
+.input-row {
+  @apply w-full max-w-4xl mx-auto flex gap-3 items-end;
+}
+
+.input-field {
+  @apply flex-1;
 }
 
 .options-bar {
@@ -125,5 +137,21 @@ html[data-theme="abyss"] {
 }
 
 .options-bar__inner {
-  @apply max-w-4xl mx-auto p-3 flex flex-wrap gap-2;
+  @apply max-w-4xl mx-auto p-3;
+}
+
+.chips {
+  @apply mt-2 flex gap-2 overflow-x-auto whitespace-nowrap pb-1;
+}
+
+.chip-button {
+  @apply badge badge-lg badge-outline cursor-pointer hover:bg-primary/10 transition-colors;
+}
+
+.jump-bottom {
+  @apply fixed right-4 bottom-24 btn btn-sm btn-accent shadow;
+}
+
+.load-last-run {
+  @apply mt-4;
 }

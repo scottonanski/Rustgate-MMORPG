@@ -22,29 +22,118 @@ import type {
   Timer 
 } from './types.ts';
 
-// Helper to parse the model's output
-function parseNarration(raw: string): { narration: string; options: string[] } {
-  const lines = raw.split('\n').filter(line => line.trim() !== '');
-  
-  const options: string[] = [];
-  let narrationLines: string[] = [];
-  
-  let foundOptions = false;
-  for (const line of lines) {
-    if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
-      foundOptions = true;
-      options.push(line.trim().substring(1).trim());
-    } else if (!foundOptions) {
-      narrationLines.push(line);
+const DEFAULT_OPTIONS = ['look around', 'talk', 'move'];
+
+const clampNarration = (text: string): string => {
+  const paragraphs = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const combined = paragraphs.join(' ');
+  const sentences = combined.match(/[^.!?]+[.!?]?/g) ?? [];
+
+  let wordTotal = 0;
+  const kept: string[] = [];
+
+  for (const rawSentence of sentences) {
+    const sentence = rawSentence.trim();
+    if (!sentence) continue;
+    const sentenceWords = sentence.split(/\s+/).filter(Boolean).length;
+    if (wordTotal + sentenceWords > 120) {
+      if (kept.length === 0) {
+        kept.push(sentence);
+      }
+      break;
     }
+    kept.push(sentence);
+    wordTotal += sentenceWords;
   }
 
-  const narration = narrationLines.join('\n').trim();
+  const result = (kept.length > 0 ? kept.join(' ') : combined).replace(/\s+/g, ' ').trim();
+  return result;
+};
 
-  if (options.length === 0) {
+const extractBulletSegments = (line: string): string[] => {
+  const pattern = /(?:^|\s)(?:-|•|\d+\.)\s*/g;
+  const segments: string[] = [];
+  let match: RegExpExecArray | null;
+  let currentStart: number | null = null;
+
+  while ((match = pattern.exec(line)) !== null) {
+    const startIndex = match.index + match[0].length;
+    if (currentStart !== null) {
+      const optionText = line.slice(currentStart, match.index).trim();
+      if (optionText) segments.push(optionText);
+    }
+    currentStart = startIndex;
+  }
+
+  if (currentStart !== null) {
+    const optionText = line.slice(currentStart).trim();
+    if (optionText) segments.push(optionText);
+  }
+
+  return segments;
+};
+
+const normaliseOptions = (candidates: string[]): string[] => {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+
+  candidates.forEach(candidate => {
+    const cleaned = candidate.replace(/\s+/g, ' ').trim().replace(/[.;:,\s]+$/g, '').trim();
+    if (!cleaned) return;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    unique.push(cleaned);
+  });
+
+  if (unique.length >= 3) {
+    return unique.slice(0, 5);
+  }
+  return [...DEFAULT_OPTIONS];
+};
+
+// Helper to parse the model's output
+function parseNarration(raw: string): { narration: string; options: string[] } {
+  const lines = raw.split('\n');
+
+  const narrationParts: string[] = [];
+  const optionCandidates: string[] = [];
+
+  let foundOptions = false;
+  for (const originalLine of lines) {
+    const trimmed = originalLine.trim();
+    if (!trimmed) continue;
+
+    const bulletSegments = extractBulletSegments(trimmed);
+    if (bulletSegments.length > 0) {
+      foundOptions = true;
+      optionCandidates.push(...bulletSegments);
+      continue;
+    }
+
+    if (foundOptions && optionCandidates.length > 0) {
+      const lastIndex = optionCandidates.length - 1;
+      optionCandidates[lastIndex] = `${optionCandidates[lastIndex]} ${trimmed}`.trim();
+      continue;
+    }
+
+    narrationParts.push(trimmed);
+  }
+
+  const narrationRaw = narrationParts.join(' ');
+  const narration = clampNarration(narrationRaw);  
+  const options = normaliseOptions(optionCandidates);
+
+  if (!narration) {
     return {
-      narration: narration || "The world holds its breath, waiting for your next move.",
-      options: ['Explore the area', 'Look at your inventory', 'Wait and see what happens'],
+      narration: 'The world holds its breath, waiting for your next move.',
+      options,
     };
   }
 
